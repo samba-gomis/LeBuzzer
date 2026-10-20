@@ -106,7 +106,10 @@ export interface ThemeView {
   questionCount: number
 }
 
-/** Everything broadcast on /topic/game/{code}: a discriminated union on `type`. */
+/**
+ * Game events, a discriminated union on `type`. All are broadcast on /topic/game/{code}, except
+ * ANSWER_PROGRESS, sent to the host alone on /user/queue/progress.
+ */
 export type RoomEvent =
   | { type: 'PLAYERS_UPDATED'; players: PlayerView[] }
   | { type: 'QUESTION_STARTED'; question: QuestionView; serverNow: number }

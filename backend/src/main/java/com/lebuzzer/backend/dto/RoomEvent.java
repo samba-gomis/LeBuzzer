@@ -3,9 +3,9 @@ package com.lebuzzer.backend.dto;
 import java.util.List;
 
 /**
- * Everything broadcast on /topic/game/{code}. A single topic per game: each message carries a
- * {@code type} field, so the frontend can tell them apart (discriminated union in TypeScript).
- * Each record sets its own type through its short constructor.
+ * The game events, broadcast on /topic/game/{code} (except {@link AnswerProgress}, see below). A single
+ * topic per game: each message carries a {@code type} field, so the frontend can tell them apart
+ * (discriminated union in TypeScript). Each record sets its own type through its short constructor.
  */
 public sealed interface RoomEvent {
 
@@ -36,6 +36,7 @@ public sealed interface RoomEvent {
 
 	}
 
+	/** The only event not broadcast to the room: sent to the host alone, on /user/queue/progress. */
 	record AnswerProgress(Type type, int answeredCount, int connectedPlayers) implements RoomEvent {
 
 		public AnswerProgress(int answeredCount, int connectedPlayers) {

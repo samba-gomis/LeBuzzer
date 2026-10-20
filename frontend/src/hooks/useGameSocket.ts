@@ -76,6 +76,14 @@ export function useGameSocket(code: string, role: GameRole): GameConnection {
       }
       setError(body)
     })
+    if (role === 'host') {
+      // The answer progress is sent to the host alone: players do not display it.
+      socket.subscribe('/user/queue/progress', (body) => {
+        if (isRoomEvent(body) && body.type === 'ANSWER_PROGRESS') {
+          dispatch({ kind: 'event', event: body, receivedAt: Date.now() })
+        }
+      })
+    }
 
     socket.start()
     socketRef.current = socket
