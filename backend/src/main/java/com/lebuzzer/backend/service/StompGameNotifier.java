@@ -45,4 +45,10 @@ public class StompGameNotifier implements GameNotifier {
 		messagingTemplate.convertAndSendToUser(connectionId, "/queue/state", snapshot);
 	}
 
+	@Override
+	public void sendAnswerProgress(String hostConnectionId, RoomEvent.AnswerProgress progress) {
+		messagingTemplate.convertAndSendToUser(hostConnectionId, "/queue/progress", progress,
+				Map.<String, Object>of(EVENT_TYPE_HEADER, progress.type().name()));
+	}
+
 }

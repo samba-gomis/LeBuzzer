@@ -181,7 +181,7 @@ class GameServiceTest {
 		assertFalse(playerView(game.code(), leaving.publicId()).connected());
 		service.startQuestion(game.code(), game.hostToken());
 		service.submitAnswer(game.code(), "p2", "q1", 1);
-		assertEquals(1, notifier.lastRoomEvent(game.code(), RoomEvent.AnswerProgress.class).answeredCount());
+		assertEquals(1, notifier.lastPrivate(HOST, RoomEvent.AnswerProgress.class).answeredCount());
 	}
 
 	@Test
@@ -217,10 +217,24 @@ class GameServiceTest {
 		service.submitAnswer(game.code(), "p1", "q1", 1);
 		assertGameError(ErrorCode.ALREADY_ANSWERED, () -> service.submitAnswer(game.code(), "p1", "q1", 0));
 
-		assertEquals(1, notifier.roomEvents(game.code(), RoomEvent.AnswerProgress.class).size(),
-				"a refused second answer must not be broadcast");
+		assertEquals(1, notifier.allPrivate(HOST, RoomEvent.AnswerProgress.class).size(),
+				"a refused second answer must not be sent");
 		service.closeQuestion(game.code(), game.hostToken());
 		assertEquals(1000, leaderboardEntry(game.code(), "Samba").lastPoints());
+	}
+
+	@Test
+	void theAnswerProgress_goesToTheHostOnly() {
+		GameCreated game = createGame();
+		join(game.code(), "p1", "Samba");
+		service.startQuestion(game.code(), game.hostToken());
+
+		service.submitAnswer(game.code(), "p1", "q1", 1);
+
+		assertEquals(1, notifier.lastPrivate(HOST, RoomEvent.AnswerProgress.class).answeredCount());
+		assertTrue(notifier.roomEvents(game.code(), RoomEvent.AnswerProgress.class).isEmpty(),
+				"not broadcast to the room");
+		assertTrue(notifier.allPrivate("p1", RoomEvent.AnswerProgress.class).isEmpty(), "players do not receive it");
 	}
 
 	@Test
@@ -502,6 +516,18 @@ class GameServiceTest {
 		@Override
 		public void sendSnapshot(String connectionId, GameSnapshot snapshot) {
 			privateMessages.add(new PrivateMessage(connectionId, snapshot));
+		}
+
+		@Override
+		public void sendAnswerProgress(String hostConnectionId, RoomEvent.AnswerProgress progress) {
+			privateMessages.add(new PrivateMessage(hostConnectionId, progress));
+		}
+
+		<T> List<T> allPrivate(String connectionId, Class<T> type) {
+			return privateMessages.stream()
+					.filter(message -> message.connectionId().equals(connectionId) && type.isInstance(message.payload()))
+					.map(message -> type.cast(message.payload()))
+					.toList();
 		}
 
 		<T> T lastPrivate(String connectionId, Class<T> type) {

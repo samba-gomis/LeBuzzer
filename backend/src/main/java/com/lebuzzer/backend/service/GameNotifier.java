@@ -19,4 +19,7 @@ public interface GameNotifier {
 
 	void sendSnapshot(String connectionId, GameSnapshot snapshot);
 
+	/** To the host alone: only the host screen displays the answer progress. */
+	void sendAnswerProgress(String hostConnectionId, RoomEvent.AnswerProgress progress);
+
 }
