@@ -105,7 +105,7 @@ Pour tester seul sur un ordinateur, ouvrez **un onglet par joueur** : chaque ong
 
 ```powershell
 cd backend
-.\mvnw.cmd -B verify       # compile et lance les 30 tests (PostgreSQL doit tourner)
+.\mvnw.cmd -B verify       # compile et lance tous les tests (PostgreSQL doit tourner)
 
 cd ..\frontend
 npm run lint               # TypeScript strict + ESLint, le moindre avertissement est bloquant
