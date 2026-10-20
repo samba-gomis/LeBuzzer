@@ -3,11 +3,14 @@ package com.lebuzzer.backend.config;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+
+import com.lebuzzer.backend.service.MessageMetrics;
 
 /**
  * STOMP over WebSocket, with Spring's in-memory "simple" broker.
@@ -31,9 +34,12 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 	 * is itself created by the configuration that calls this class.
 	 */
 	private final TaskScheduler messageBrokerTaskScheduler;
+	private final MessageMetrics messageMetrics;
 
-	public WebSocketConfig(@Lazy @Qualifier("messageBrokerTaskScheduler") TaskScheduler messageBrokerTaskScheduler) {
+	public WebSocketConfig(@Lazy @Qualifier("messageBrokerTaskScheduler") TaskScheduler messageBrokerTaskScheduler,
+			MessageMetrics messageMetrics) {
 		this.messageBrokerTaskScheduler = messageBrokerTaskScheduler;
+		this.messageMetrics = messageMetrics;
 	}
 
 	@Override
@@ -60,6 +66,18 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 		// Messages sent to one client keep the order in which the server published them
 		// (e.g. a state snapshot is never overtaken by an older event).
 		registry.setPreservePublishOrder(true);
+	}
+
+	/** Every frame received from a client (SEND, SUBSCRIBE, heartbeats...) is counted. */
+	@Override
+	public void configureClientInboundChannel(ChannelRegistration registration) {
+		registration.interceptors(new MessageCounterInterceptor(messageMetrics, MessageMetrics.Direction.CLIENT_TO_SERVER));
+	}
+
+	/** Every frame sent to a client (one per subscriber for a broadcast, heartbeats...) is counted. */
+	@Override
+	public void configureClientOutboundChannel(ChannelRegistration registration) {
+		registration.interceptors(new MessageCounterInterceptor(messageMetrics, MessageMetrics.Direction.SERVER_TO_CLIENT));
 	}
 
 }
