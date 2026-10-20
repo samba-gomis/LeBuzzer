@@ -217,7 +217,22 @@ pour comparer avec vos propres essais :
 | Double-clic | 1 réponse comptée, points ajoutés une seule fois |
 | Deux parties en parallèle | aucune fuite, dans les deux sens |
 
-## 6. Dépannage
+## 6. Compter les messages échangés
+
+Le backend compte chaque message STOMP qui passe par ses WebSockets, dans les deux sens : messages applicatifs,
+heartbeats et trames du protocole (`CONNECT`, `SUBSCRIBE`…). Les chiffres d'une partie sont disponibles à tout
+moment :
+
+```powershell
+curl http://localhost:8080/api/metrics/ABCDE
+```
+
+La réponse donne le total, la répartition applicatif / heartbeats / protocole, et le détail par type
+(`SEND answer`, `MESSAGE QUESTION_STARTED`, `MESSAGE snapshot`…). Le même bilan est écrit dans les logs du backend
+2 secondes après la fin de la partie. Ce sont ces mesures qu'utilise la
+[note comparative polling / WebSocket](docs/comparatif-polling-websocket.md).
+
+## 7. Dépannage
 
 | Symptôme | Cause probable |
 |---|---|
@@ -227,16 +242,16 @@ pour comparer avec vos propres essais :
 | Un téléphone n'arrive pas à se connecter | il n'est pas sur le même Wi-Fi, utilise `localhost` au lieu de l'adresse `Network:` de Vite, ou le pare-feu bloque Node.js |
 | « Partie indisponible » (animateur) ou « Impossible de rejoindre » (joueur) après un redémarrage du backend | les parties vivent en mémoire : un redémarrage les efface, il faut en créer une nouvelle |
 
-## 7. Structure du dépôt
+## 8. Structure du dépôt
 
 ```
 LeBuzzer/
 ├── .github/workflows/ci.yml   CI : backend (verify) et frontend (lint + build)
 ├── backend/                   Spring Boot
 │   └── src/main/java/com/lebuzzer/backend/
-│       ├── config/            WebSocket/STOMP, identité anonyme par connexion, horloge et minuteur
-│       ├── controller/        GameController (STOMP), ThemeController (REST)
-│       ├── service/           GameService : toutes les règles du jeu
+│       ├── config/            WebSocket/STOMP, identité anonyme par connexion, compteur de messages, horloge
+│       ├── controller/        GameController (STOMP), ThemeController et MetricsController (REST)
+│       ├── service/           GameService : toutes les règles du jeu ; MessageMetrics : les comptes
 │       ├── model/             l'état d'une partie en mémoire
 │       ├── dto/               le contrat des messages échangés
 │       └── event/             détection des déconnexions
