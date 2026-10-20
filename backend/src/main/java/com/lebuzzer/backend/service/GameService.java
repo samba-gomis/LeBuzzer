@@ -48,6 +48,8 @@ public class GameService {
 
 	private static final int MAX_NICKNAME_LENGTH = 20;
 	private static final int MAX_CODE_ATTEMPTS = 100;
+	/** Delay before logging the message counts of a finished game, so that its last messages are counted. */
+	private static final long METRICS_LOG_DELAY_MS = 2_000;
 
 	/** Active games by code. Concurrent map: many connections create and look up games at once. */
 	private final Map<String, Game> games = new ConcurrentHashMap<>();
@@ -60,14 +62,16 @@ public class GameService {
 	private final GameNotifier notifier;
 	private final Clock clock;
 	private final ScheduledExecutorService questionTimer;
+	private final MessageMetrics messageMetrics;
 
 	public GameService(QuestionCatalog questionCatalog, CodeGenerator codeGenerator, GameNotifier notifier,
-			Clock clock, ScheduledExecutorService questionTimer) {
+			Clock clock, ScheduledExecutorService questionTimer, MessageMetrics messageMetrics) {
 		this.questionCatalog = questionCatalog;
 		this.codeGenerator = codeGenerator;
 		this.notifier = notifier;
 		this.clock = clock;
 		this.questionTimer = questionTimer;
+		this.messageMetrics = messageMetrics;
 	}
 
 	// ------------------------------------------------------------------ create
@@ -217,6 +221,9 @@ public class GameService {
 			game.markFinished();
 			notifier.broadcast(game.getCode(), new RoomEvent.GameEnded(leaderboard(game)));
 			log.info("Game {} finished", game.getCode());
+			String finishedCode = game.getCode();
+			questionTimer.schedule(() -> messageMetrics.logSummary(finishedCode), METRICS_LOG_DELAY_MS,
+					TimeUnit.MILLISECONDS);
 		}
 	}
 

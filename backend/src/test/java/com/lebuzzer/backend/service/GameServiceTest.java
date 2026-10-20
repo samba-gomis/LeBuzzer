@@ -62,7 +62,8 @@ class GameServiceTest {
 		clock = new MutableClock(START);
 		notifier = new RecordingNotifier();
 		timer = Executors.newSingleThreadScheduledExecutor();
-		service = new GameService(new TestCatalog(), new RandomCodeGenerator(), notifier, clock, timer);
+		service = new GameService(new TestCatalog(), new RandomCodeGenerator(), notifier, clock, timer,
+				new MessageMetrics());
 	}
 
 	@AfterEach
@@ -75,7 +76,8 @@ class GameServiceTest {
 	@Test
 	void gameCodes_areUnique_evenWhenTheGeneratorRepeatsItself() {
 		Iterator<String> codes = List.of("AAAAA", "AAAAA", "BBBBB").iterator();
-		GameService repeatingService = new GameService(new TestCatalog(), codes::next, notifier, clock, timer);
+		GameService repeatingService = new GameService(new TestCatalog(), codes::next, notifier, clock, timer,
+				new MessageMetrics());
 
 		repeatingService.createGame("c1", "quiz");
 		repeatingService.createGame("c2", "quiz");

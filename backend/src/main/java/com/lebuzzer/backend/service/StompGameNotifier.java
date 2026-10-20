@@ -1,5 +1,7 @@
 package com.lebuzzer.backend.service;
 
+import java.util.Map;
+
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +17,9 @@ import com.lebuzzer.backend.dto.RoomEvent;
 @Component
 public class StompGameNotifier implements GameNotifier {
 
+	/** STOMP header carrying the type of a room event; read by MessageMetrics to count messages per type. */
+	public static final String EVENT_TYPE_HEADER = "event-type";
+
 	private static final String ROOM_PREFIX = "/topic/game/";
 
 	private final SimpMessagingTemplate messagingTemplate;
@@ -25,7 +30,8 @@ public class StompGameNotifier implements GameNotifier {
 
 	@Override
 	public void broadcast(String gameCode, RoomEvent event) {
-		messagingTemplate.convertAndSend(ROOM_PREFIX + gameCode, event);
+		messagingTemplate.convertAndSend(ROOM_PREFIX + gameCode, event,
+				Map.<String, Object>of(EVENT_TYPE_HEADER, event.type().name()));
 	}
 
 	@Override
