@@ -198,6 +198,7 @@ réponse arrivée après. Le navigateur se contente d'afficher le décompte.
 | Onglet fermé | fermez l'onglet d'un joueur pendant une partie | il disparaît de la liste des connectés en moins d'une seconde, la partie continue, et il garde sa place au classement |
 | Deux parties en parallèle | créez une deuxième partie dans un autre onglet animateur, avec ses propres joueurs, puis lancez des questions dans chacune | aucune question, aucun joueur ni aucun classement d'une partie n'apparaît dans l'autre (chaque partie a sa salle : `/topic/game/{code}`) |
 | Pseudo déjà pris | rejoignez une partie avec un pseudo existant (même avec d'autres majuscules) | refus : « Ce pseudo est déjà pris dans cette partie », sans créer de joueur |
+| Client modifié | test automatique `StompSecurityIntegrationTest` : abonnement à `/queue/**` ou `/topic/**`, envoi direct sur une salle ou sur la file privée d'un autre | trame refusée et connexion fermée par le serveur ; aucun `hostToken` ni `playerId` ne fuit, et une partie normale n'est pas affectée |
 
 ### 5.5 Résultats de référence
 
@@ -249,7 +250,7 @@ LeBuzzer/
 ├── .github/workflows/ci.yml   CI : backend (verify) et frontend (lint + build)
 ├── backend/                   Spring Boot
 │   └── src/main/java/com/lebuzzer/backend/
-│       ├── config/            WebSocket/STOMP, identité anonyme par connexion, compteur de messages, horloge
+│       ├── config/            WebSocket/STOMP, identité anonyme, contrôle des destinations, compteur, horloge
 │       ├── controller/        GameController (STOMP), ThemeController et MetricsController (REST)
 │       ├── service/           GameService : toutes les règles du jeu ; MessageMetrics : les comptes
 │       ├── model/             l'état d'une partie en mémoire
