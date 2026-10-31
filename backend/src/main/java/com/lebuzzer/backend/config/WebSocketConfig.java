@@ -68,10 +68,14 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 		registry.setPreservePublishOrder(true);
 	}
 
-	/** Every frame received from a client (SEND, SUBSCRIBE, heartbeats...) is counted. */
+	/**
+	 * Every frame received from a client is first checked, then counted (SEND, SUBSCRIBE, heartbeats...).
+	 * In this order, a refused frame cannot attach its connection to a game in the message counts.
+	 */
 	@Override
 	public void configureClientInboundChannel(ChannelRegistration registration) {
-		registration.interceptors(new MessageCounterInterceptor(messageMetrics, MessageMetrics.Direction.CLIENT_TO_SERVER));
+		registration.interceptors(new StompDestinationGuard(),
+				new MessageCounterInterceptor(messageMetrics, MessageMetrics.Direction.CLIENT_TO_SERVER));
 	}
 
 	/** Every frame sent to a client (one per subscriber for a broadcast, heartbeats...) is counted. */
