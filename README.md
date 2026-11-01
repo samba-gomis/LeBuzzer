@@ -148,18 +148,18 @@ ouverte, heure de fin, classement), et pas seulement les événements suivants.
 
 **Attendu** :
 
-- après environ 20 secondes, le badge du joueur passe de « Connecté » à **« Reconnexion… »** ;
+- le badge du joueur passe **aussitôt** de « Connecté » à **« Reconnexion… »** ;
 - la console affiche les tentatives, de plus en plus espacées :
   `[gameSocket] connection lost, retry #1 in ~1000 ms`, puis `#2 in ~2000 ms`, `#3 in ~4000 ms`,
   `#4 in ~8000 ms`… (plafond de 30 s, avec ±20 % d'aléatoire) ;
-- après environ 30 secondes, l'animateur voit un joueur connecté de moins ;
-- une fois le réseau revenu, le badge repasse à « Connecté » en quelques secondes, et l'écran affiche **la
-  nouvelle question** : l'état a été rattrapé, le score est conservé, et le joueur peut répondre.
+- au plus tard après environ 30 secondes, l'animateur voit un joueur connecté de moins ;
+- dès le retour du réseau, sans attendre la fin du délai en cours, le badge repasse à « Connecté », et l'écran affiche
+  **la nouvelle question** : l'état a été rattrapé, le score est conservé, et le joueur peut répondre.
 
-*Pourquoi environ 20 secondes* : le mode Offline du navigateur ne ferme pas la connexion WebSocket déjà ouverte ;
-elle devient simplement muette. Ce sont les **heartbeats** STOMP (un signal toutes les 10 s dans les deux sens) qui
-révèlent la coupure : le client abandonne la connexion après deux signaux manqués, le serveur après trois
-intervalles. Sur un vrai téléphone qui perd le Wi-Fi, c'est le même mécanisme.
+*Deux détections complémentaires* : le navigateur signale lui-même la plupart des coupures (événements `offline` et
+`online`), et le client réagit tout de suite. Certaines lui échappent, par exemple un Wi-Fi connecté mais sans accès au
+réseau : la connexion devient alors simplement muette. Ce sont les **heartbeats** STOMP (un signal toutes les 10 s dans
+les deux sens) qui la révèlent : le client abandonne après deux signaux manqués, le serveur après trois intervalles.
 
 **Variante rapide** : appuyez sur **F5** pendant une partie. Le joueur revient instantanément avec le même pseudo,
 le même score et l'écran correspondant à l'état de la partie.
@@ -203,17 +203,19 @@ réponse arrivée après. Le navigateur se contente d'afficher le décompte.
 
 ### 5.5 Résultats de référence
 
-Mesures relevées lors d'une exécution de cette procédure (1 animateur, jusqu'à 3 joueurs, navigateur automatisé),
+Mesures relevées lors d'une exécution de cette procédure (1 animateur, jusqu'à 3 joueurs, navigateur automatisé, ou script si c'est indiqué),
 pour comparer avec vos propres essais :
 
 | Test | Résultat mesuré |
 |---|---|
 | Retardataire arrivé 6 s après le début | même temps restant que l'animateur (13 s des deux côtés), réponse acceptée |
 | Retardataire 7e sur 7 (script : vrais messages du serveur dans le code du frontend) | classement reçu avec les points de la question précédente, 5 premiers et sa ligne rendus par le composant |
-| Détection de la coupure par le client | 21 s |
-| Détection de la coupure par le serveur | 29 s |
+| Coupure signalée par le navigateur : réaction du client (script) | moins de 50 ms |
+| Coupure silencieuse : détection par le client grâce aux heartbeats | 18 à 21 s |
+| Coupure silencieuse : détection par le serveur | 29 s |
 | Délais de reconnexion affichés | 1,2 s, 2,1 s, 3,9 s, 6,5 s |
-| Reconnexion après le retour du réseau | 2,9 s, nouvelle question affichée, score conservé |
+| Retour du réseau après 9 s de coupure (script) | 83 ms, contre 8 s avant l'écoute de l'événement `online` |
+| État après la reconnexion | nouvelle question affichée, score conservé |
 | Horloge décalée de +30 s (avant la question) | décompte identique à celui de l'animateur (19 s / 19 s, puis 17 s / 17 s), réponse acceptée |
 | Horloge décalée de +30 s (pendant une question) | décompte faux pendant 10 s, puis reconnexion automatique et décompte rétabli |
 | Onglet fermé | retiré des joueurs connectés en 61 ms |
