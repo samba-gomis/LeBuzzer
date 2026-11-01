@@ -112,7 +112,7 @@ export interface ThemeView {
  */
 export type RoomEvent =
   | { type: 'PLAYERS_UPDATED'; players: PlayerView[] }
-  | { type: 'QUESTION_STARTED'; question: QuestionView; serverNow: number }
+  | { type: 'QUESTION_STARTED'; question: QuestionView; serverNow: number; leaderboard: LeaderboardEntry[] }
   | { type: 'ANSWER_PROGRESS'; answeredCount: number; connectedPlayers: number }
   | { type: 'QUESTION_CLOSED'; questionId: string; correctIndex: number; leaderboard: LeaderboardEntry[] }
   | { type: 'GAME_ENDED'; leaderboard: LeaderboardEntry[] }
