@@ -92,8 +92,9 @@ configurer en développement.
    Ils apparaissent en direct dans la liste de l'animateur.
 3. **Animateur** : **Lancer la première question**. Les joueurs ont 20 secondes ; l'animateur voit la progression
    des réponses et peut **Clore la question** avant la fin.
-4. À la clôture, chaque joueur voit s'il a bon, ses points et son rang ; l'animateur voit le classement et passe à la
-   **Question suivante** ou termine la partie.
+4. À la clôture, chaque joueur voit s'il a bon, ses points, son rang et le classement ; l'animateur voit le classement
+   et passe à la **Question suivante** ou termine la partie. Pendant une question, le classement reste affiché sous les
+   réponses des joueurs.
 
 Une bonne réponse rapporte entre 50 % (au dernier moment) et 100 % (immédiatement) des points de la question ;
 une mauvaise réponse rapporte 0. Le barème par difficulté est provisoire.
@@ -128,12 +129,12 @@ onglets joueurs qui l'ont rejointe.
 
 ### 5.1 Le joueur qui arrive en cours de partie
 
-1. L'animateur lance une question.
+1. Jouez une première question, pour que le classement contienne des points, puis lancez la suivante.
 2. Attendez 5 à 10 secondes, puis ouvrez un nouvel onglet et rejoignez la partie avec un nouveau pseudo.
 
 **Attendu** : le nouveau joueur voit immédiatement la question en cours, avec **le même temps restant que
-l'animateur**, et il peut répondre (la progression de l'animateur augmente). À la clôture, il apparaît dans le
-classement.
+l'animateur**, ainsi que **le classement actuel** sous les réponses : les 5 premiers, plus sa propre ligne surlignée. Il
+peut répondre (la progression de l'animateur augmente).
 
 *Pourquoi* : à l'arrivée, le serveur envoie un **snapshot**, c'est-à-dire l'état complet de la partie (question
 ouverte, heure de fin, classement), et pas seulement les événements suivants.
@@ -208,6 +209,7 @@ pour comparer avec vos propres essais :
 | Test | Résultat mesuré |
 |---|---|
 | Retardataire arrivé 6 s après le début | même temps restant que l'animateur (13 s des deux côtés), réponse acceptée |
+| Retardataire 7e sur 7 (script : vrais messages du serveur dans le code du frontend) | classement reçu avec les points de la question précédente, 5 premiers et sa ligne rendus par le composant |
 | Détection de la coupure par le client | 21 s |
 | Détection de la coupure par le serveur | 29 s |
 | Délais de reconnexion affichés | 1,2 s, 2,1 s, 3,9 s, 6,5 s |
