@@ -68,16 +68,17 @@ export class GameSocket {
     }
     this.running = true
     this.attempt = 0
+    window.addEventListener('offline', this.handleOffline)
+    window.addEventListener('online', this.handleOnline)
     this.connect('connecting')
   }
 
   /** Closes the connection for good (component unmounted, page left). */
   stop(): void {
     this.running = false
-    if (this.retryTimer !== null) {
-      clearTimeout(this.retryTimer)
-      this.retryTimer = null
-    }
+    window.removeEventListener('offline', this.handleOffline)
+    window.removeEventListener('online', this.handleOnline)
+    this.clearRetryTimer()
     const client = this.client
     this.client = null
     if (client !== null) {
@@ -134,12 +135,45 @@ export class GameSocket {
     client.activate()
   }
 
-  private scheduleRetry(): void {
-    const failed = this.client
-    this.client = null
-    if (failed !== null) {
-      void failed.deactivate()
+  /**
+   * The browser knows the network is gone: no need to wait for the heartbeats (about 20 s) to say so.
+   * They stay in place for the cuts it cannot see, such as a Wi-Fi network without Internet access.
+   */
+  private readonly handleOffline = (): void => {
+    if (this.running && this.client !== null) {
+      this.scheduleRetry()
     }
+  }
+
+  /** The network is back: reconnect now instead of waiting for the end of the backoff (up to 30 s). */
+  private readonly handleOnline = (): void => {
+    if (!this.running || this.client?.connected) {
+      return
+    }
+    this.clearRetryTimer()
+    this.dropClient()
+    this.attempt = 0
+    this.connect('reconnecting')
+  }
+
+  private clearRetryTimer(): void {
+    if (this.retryTimer !== null) {
+      clearTimeout(this.retryTimer)
+      this.retryTimer = null
+    }
+  }
+
+  /** Forgets the current client at once: on a dead network, a clean goodbye would never get through. */
+  private dropClient(): void {
+    const dropped = this.client
+    this.client = null
+    if (dropped !== null) {
+      void dropped.deactivate({ force: true })
+    }
+  }
+
+  private scheduleRetry(): void {
+    this.dropClient()
     const delay = retryDelayMs(this.attempt)
     this.attempt += 1
     // Deliberate log: it makes the backoff (1 s, 2 s, 4 s...) visible in the console.
