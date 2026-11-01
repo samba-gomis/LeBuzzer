@@ -67,6 +67,7 @@ function applyEvent(view: GameSnapshot, event: RoomEvent): GameSnapshot {
         currentQuestion: event.question,
         correctIndex: null,
         answeredCount: 0,
+        leaderboard: event.leaderboard,
         you: view.you === null ? null : { ...view.you, choiceIndex: null },
       }
     case 'ANSWER_PROGRESS':

@@ -5,11 +5,15 @@ interface LeaderboardProps {
   entries: LeaderboardEntry[]
   /** Highlights this player's line (the player's own screen). */
   highlightPublicId?: string
+  /** Shows the first lines only; the highlighted line is always added, even if it comes later. */
   limit?: number
 }
 
 export default function Leaderboard({ entries, highlightPublicId, limit }: LeaderboardProps) {
-  const shown = limit === undefined ? entries : entries.slice(0, limit)
+  const shown =
+    limit === undefined
+      ? entries
+      : entries.filter((entry, index) => index < limit || entry.publicId === highlightPublicId)
   if (shown.length === 0) {
     return <p className="muted">Pas encore de joueur.</p>
   }

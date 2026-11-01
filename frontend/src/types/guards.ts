@@ -122,7 +122,11 @@ export function isRoomEvent(value: unknown): value is RoomEvent {
     case 'PLAYERS_UPDATED':
       return isArrayOf(value.players, isPlayerView)
     case 'QUESTION_STARTED':
-      return isQuestionView(value.question) && isNumber(value.serverNow)
+      return (
+        isQuestionView(value.question) &&
+        isNumber(value.serverNow) &&
+        isArrayOf(value.leaderboard, isLeaderboardEntry)
+      )
     case 'ANSWER_PROGRESS':
       return isNumber(value.answeredCount) && isNumber(value.connectedPlayers)
     case 'QUESTION_CLOSED':

@@ -193,7 +193,7 @@ public class GameService {
 			long now = clock.millis();
 			game.openNextQuestion(now);
 			scheduleAutoClose(game, game.currentQuestion().id(), game.getQuestionEndsAt() - now);
-			notifier.broadcast(game.getCode(), new RoomEvent.QuestionStarted(questionView(game), now));
+			notifier.broadcast(game.getCode(), new RoomEvent.QuestionStarted(questionView(game), now, leaderboard(game)));
 		}
 	}
 

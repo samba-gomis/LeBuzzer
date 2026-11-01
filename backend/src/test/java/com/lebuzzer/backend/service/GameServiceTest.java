@@ -150,6 +150,56 @@ class GameServiceTest {
 		assertNotNull(snapshot.leaderboard());
 	}
 
+	@Test
+	void aLateJoiner_receivesTheCurrentLeaderboard() {
+		GameCreated game = createGame();
+		join(game.code(), "p1", "Samba");
+		service.startQuestion(game.code(), game.hostToken());
+		service.submitAnswer(game.code(), "p1", "q1", 1);
+		service.closeQuestion(game.code(), game.hostToken());
+		service.startQuestion(game.code(), game.hostToken());
+
+		service.join(game.code(), "late", "Retardataire", null);
+
+		List<LeaderboardEntry> leaderboard = notifier.lastSnapshot("late").leaderboard();
+		assertEquals(List.of("Samba", "Retardataire"), leaderboard.stream().map(LeaderboardEntry::nickname).toList());
+		assertEquals(1000, leaderboard.getFirst().score());
+	}
+
+	@Test
+	void aQuestionStart_carriesTheCurrentLeaderboard_withEveryPlayer() {
+		GameCreated game = createGame();
+		join(game.code(), "p1", "Samba");
+		service.startQuestion(game.code(), game.hostToken());
+		service.submitAnswer(game.code(), "p1", "q1", 1);
+		service.closeQuestion(game.code(), game.hostToken());
+		join(game.code(), "p2", "Lina");
+
+		service.startQuestion(game.code(), game.hostToken());
+
+		List<LeaderboardEntry> leaderboard = notifier.lastRoomEvent(game.code(), RoomEvent.QuestionStarted.class)
+				.leaderboard();
+		assertEquals(List.of("Samba", "Lina"), leaderboard.stream().map(LeaderboardEntry::nickname).toList());
+		assertEquals(List.of(1000, 0), leaderboard.stream().map(LeaderboardEntry::score).toList());
+	}
+
+	@Test
+	void theLeaderboard_revealsNothingAboutTheOpenQuestion() {
+		GameCreated game = createGame();
+		join(game.code(), "p1", "Samba");
+		service.startQuestion(game.code(), game.hostToken());
+		service.submitAnswer(game.code(), "p1", "q1", 1);
+
+		service.join(game.code(), "late", "Retardataire", null);
+
+		LeaderboardEntry samba = notifier.lastSnapshot("late").leaderboard().stream()
+				.filter(entry -> entry.nickname().equals("Samba"))
+				.findFirst()
+				.orElseThrow();
+		assertEquals(0, samba.score(), "points are only added when the question closes");
+		assertEquals(0, samba.lastPoints());
+	}
+
 	// ------------------------------------------------------------------ disconnection and rejoin
 
 	@Test

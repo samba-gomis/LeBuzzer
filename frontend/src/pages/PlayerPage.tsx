@@ -13,10 +13,13 @@ import { formatPoints, formatRank } from '../services/format'
 import type { ConnectionState } from '../services/gameSocket'
 import { normalizeGameCode } from '../services/gameCode'
 import { loadPlayerSession } from '../services/session'
-import type { ErrorCode, GameSnapshot, PlayerSelf, QuestionView } from '../types/messages'
+import type { ErrorCode, GameSnapshot, LeaderboardEntry, PlayerSelf, QuestionView } from '../types/messages'
 
 /** Errors after which this player cannot be in the game: back to the home page. */
 const FATAL_ERRORS: readonly ErrorCode[] = ['GAME_NOT_FOUND', 'NICKNAME_TAKEN', 'INVALID_NICKNAME', 'GAME_FINISHED']
+
+/** During the game, the top of the leaderboard (plus the player's own line) fits on a phone screen. */
+const LEADERBOARD_LINES = 5
 
 export default function PlayerPage() {
   const code = normalizeGameCode(useParams().code ?? '')
@@ -77,6 +80,7 @@ function PlayerGame({ code }: { code: string }) {
         <PlayerQuestion
           question={question}
           you={you}
+          leaderboard={view.leaderboard}
           remainingMs={remainingMs}
           connectionState={connectionState}
           onAnswer={(choiceIndex) => answer(question.questionId, choiceIndex)}
@@ -93,12 +97,13 @@ function PlayerGame({ code }: { code: string }) {
 interface PlayerQuestionProps {
   question: QuestionView
   you: PlayerSelf
+  leaderboard: LeaderboardEntry[]
   remainingMs: number | null
   connectionState: ConnectionState
   onAnswer: (choiceIndex: number) => void
 }
 
-function PlayerQuestion({ question, you, remainingMs, connectionState, onAnswer }: PlayerQuestionProps) {
+function PlayerQuestion({ question, you, leaderboard, remainingMs, connectionState, onAnswer }: PlayerQuestionProps) {
   const answered = you.choiceIndex !== null
   const timeUp = remainingMs !== null && remainingMs <= 0
   // Locked once answered (only the first answer counts), when the time is up, or while offline.
@@ -119,6 +124,8 @@ function PlayerQuestion({ question, you, remainingMs, connectionState, onAnswer 
         {answered && 'Réponse envoyée ! Résultat à la fin du temps.'}
         {!answered && timeUp && 'Temps écoulé.'}
       </p>
+      <h3 className="section-title">Classement</h3>
+      <Leaderboard entries={leaderboard} highlightPublicId={you.publicId} limit={LEADERBOARD_LINES} />
     </section>
   )
 }
@@ -141,6 +148,8 @@ function PlayerResult({ view, question, you }: { view: GameSnapshot; question: Q
       </div>
       <QuestionCard question={question} />
       <ChoiceGrid choices={question.choices} selectedIndex={you.choiceIndex} correctIndex={view.correctIndex} disabled />
+      <h3 className="section-title">Classement</h3>
+      <Leaderboard entries={view.leaderboard} highlightPublicId={you.publicId} limit={LEADERBOARD_LINES} />
       <p className="muted waiting">En attente de la question suivante…</p>
     </section>
   )
