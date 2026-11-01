@@ -27,11 +27,15 @@ public sealed interface RoomEvent {
 
 	}
 
-	/** Never contains the correct answer (see {@link QuestionView}). */
-	record QuestionStarted(Type type, QuestionView question, long serverNow) implements RoomEvent {
+	/**
+	 * Never contains the correct answer (see {@link QuestionView}). The leaderboard is the one before this
+	 * question: players who joined since the last close appear in it, and every player can display it.
+	 */
+	record QuestionStarted(Type type, QuestionView question, long serverNow, List<LeaderboardEntry> leaderboard)
+			implements RoomEvent {
 
-		public QuestionStarted(QuestionView question, long serverNow) {
-			this(Type.QUESTION_STARTED, question, serverNow);
+		public QuestionStarted(QuestionView question, long serverNow, List<LeaderboardEntry> leaderboard) {
+			this(Type.QUESTION_STARTED, question, serverNow, leaderboard);
 		}
 
 	}
