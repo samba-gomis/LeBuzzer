@@ -70,6 +70,40 @@ class MessageMetricsTest {
 		assertTrue(metrics.forGame("ZZZZZ").isEmpty());
 	}
 
+	@Test
+	void forgettingAGame_removesOnlyItsCounts() {
+		record(Direction.CLIENT_TO_SERVER, "a", SimpMessageType.SUBSCRIBE, "/topic/game/AAAAA", Map.of());
+		record(Direction.CLIENT_TO_SERVER, "b", SimpMessageType.SUBSCRIBE, "/topic/game/BBBBB", Map.of());
+
+		metrics.forgetGame("AAAAA");
+
+		assertTrue(metrics.forGame("AAAAA").isEmpty());
+		assertTrue(metrics.forGame("BBBBB").isPresent());
+		assertEquals(1, metrics.trackedSessions());
+	}
+
+	@Test
+	void aConnectionWithoutGame_isForgottenWhenItCloses() {
+		record(Direction.CLIENT_TO_SERVER, "creator", SimpMessageType.CONNECT, null, Map.of());
+		record(Direction.CLIENT_TO_SERVER, "creator", SimpMessageType.MESSAGE, "/app/game/create", Map.of());
+		assertEquals(1, metrics.trackedSessions());
+
+		record(Direction.CLIENT_TO_SERVER, "creator", SimpMessageType.DISCONNECT, null, Map.of());
+		record(Direction.SERVER_TO_CLIENT, "creator", SimpMessageType.DISCONNECT_ACK, null, Map.of());
+
+		assertEquals(0, metrics.trackedSessions(), "the frames of the closing must not bring it back");
+	}
+
+	@Test
+	void aConnectionOfAGame_keepsItsCountsAfterItCloses() {
+		record(Direction.CLIENT_TO_SERVER, "s1", SimpMessageType.SUBSCRIBE, "/topic/game/ABCDE", Map.of());
+
+		record(Direction.CLIENT_TO_SERVER, "s1", SimpMessageType.DISCONNECT, null, Map.of());
+		record(Direction.SERVER_TO_CLIENT, "s1", SimpMessageType.DISCONNECT_ACK, null, Map.of());
+
+		assertEquals(3, metrics.forGame("ABCDE").orElseThrow().total());
+	}
+
 	private void record(Direction direction, String sessionId, SimpMessageType type, String destination,
 			Map<String, Object> extraHeaders) {
 		SimpMessageHeaderAccessor headers = SimpMessageHeaderAccessor.create(type);
