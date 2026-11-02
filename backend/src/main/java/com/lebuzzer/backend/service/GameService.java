@@ -12,6 +12,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import jakarta.annotation.PostConstruct;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -50,6 +52,9 @@ public class GameService {
 	private static final int MAX_CODE_ATTEMPTS = 100;
 	/** Delay before logging the message counts of a finished game, so that its last messages are counted. */
 	private static final long METRICS_LOG_DELAY_MS = 2_000;
+	/** A game without activity for this long is removed, if it is over or if nobody is connected to it. */
+	private static final long GAME_EXPIRY_MS = TimeUnit.MINUTES.toMillis(30);
+	private static final long CLEANUP_PERIOD_MINUTES = 5;
 
 	/** Active games by code. Concurrent map: many connections create and look up games at once. */
 	private final Map<String, Game> games = new ConcurrentHashMap<>();
@@ -86,7 +91,7 @@ public class GameService {
 
 	private Game registerWithUniqueCode(Theme theme) {
 		for (int attempt = 0; attempt < MAX_CODE_ATTEMPTS; attempt++) {
-			Game candidate = new Game(codeGenerator.nextCode(), UUID.randomUUID().toString(), theme);
+			Game candidate = new Game(codeGenerator.nextCode(), UUID.randomUUID().toString(), theme, clock.millis());
 			// putIfAbsent is atomic: two games created at the same moment can never share a code.
 			if (games.putIfAbsent(candidate.getCode(), candidate) == null) {
 				return candidate;
@@ -113,6 +118,7 @@ public class GameService {
 				connections.remove(player.getConnectionId());
 			}
 			player.connect(connectionId);
+			game.markActivity(clock.millis());
 			connections.put(connectionId, ConnectionInfo.player(game.getCode(), player.getPlayerId()));
 			notifier.sendSnapshot(connectionId, snapshot(game, ParticipantRole.PLAYER, player));
 			broadcastPlayers(game);
@@ -126,6 +132,7 @@ public class GameService {
 		releasePreviousParticipant(connectionId, game.getCode(), ParticipantRole.HOST, null);
 		synchronized (game) {
 			game.setHostConnectionId(connectionId);
+			game.markActivity(clock.millis());
 			connections.put(connectionId, ConnectionInfo.host(game.getCode()));
 			notifier.sendSnapshot(connectionId, snapshot(game, ParticipantRole.HOST, null));
 		}
@@ -171,6 +178,7 @@ public class GameService {
 			int points = ScoreCalculator.pointsFor(choiceIndex == question.correctIndex(), question.points(),
 					game.getQuestionEndsAt() - now, question.durationMs());
 			game.recordAnswer(info.playerId(), new SubmittedAnswer(choiceIndex, points));
+			game.markActivity(now);
 			sendProgressToHost(game);
 		}
 	}
@@ -192,6 +200,7 @@ public class GameService {
 			}
 			long now = clock.millis();
 			game.openNextQuestion(now);
+			game.markActivity(now);
 			scheduleAutoClose(game, game.currentQuestion().id(), game.getQuestionEndsAt() - now);
 			notifier.broadcast(game.getCode(), new RoomEvent.QuestionStarted(questionView(game), now, leaderboard(game)));
 		}
@@ -219,6 +228,7 @@ public class GameService {
 				closeCurrentQuestion(game);
 			}
 			game.markFinished();
+			game.markActivity(clock.millis());
 			notifier.broadcast(game.getCode(), new RoomEvent.GameEnded(leaderboard(game)));
 			log.info("Game {} finished", game.getCode());
 			String finishedCode = game.getCode();
@@ -270,9 +280,46 @@ public class GameService {
 			player.recordQuestionResult(answer == null ? 0 : answer.points());
 		}
 		game.markQuestionClosed();
+		game.markActivity(clock.millis());
 		Question question = game.currentQuestion();
 		notifier.broadcast(game.getCode(),
 				new RoomEvent.QuestionClosed(question.id(), question.correctIndex(), leaderboard(game)));
+	}
+
+	// ------------------------------------------------------------------ cleanup
+
+	/** Started once by Spring when the service is ready. */
+	@PostConstruct
+	void scheduleCleanup() {
+		questionTimer.scheduleWithFixedDelay(() -> {
+			try {
+				removeExpiredGames();
+			} catch (RuntimeException e) {
+				// An exception would otherwise silently stop all the following runs.
+				log.error("Removal of expired games failed", e);
+			}
+		}, CLEANUP_PERIOD_MINUTES, CLEANUP_PERIOD_MINUTES, TimeUnit.MINUTES);
+	}
+
+	/**
+	 * Games live in memory: without this, the server would keep them all until it stops. A game in pause
+	 * is protected: as long as it is not over, it stays while someone is connected to it.
+	 * Package-private so tests can trigger it.
+	 */
+	void removeExpiredGames() {
+		long now = clock.millis();
+		for (Game game : games.values()) {
+			synchronized (game) {
+				boolean idle = now - game.getLastActivityAt() >= GAME_EXPIRY_MS;
+				boolean abandoned = game.getStatus() == GameStatus.FINISHED || !game.hasConnectedParticipant();
+				if (idle && abandoned) {
+					games.remove(game.getCode());
+					messageMetrics.forgetGame(game.getCode());
+					log.info("Game {} removed after {} minutes without activity", game.getCode(),
+							TimeUnit.MILLISECONDS.toMinutes(now - game.getLastActivityAt()));
+				}
+			}
+		}
 	}
 
 	// ------------------------------------------------------------------ disconnection
@@ -289,6 +336,7 @@ public class GameService {
 			return;
 		}
 		synchronized (game) {
+			game.markActivity(clock.millis());
 			if (info.role() == ParticipantRole.HOST) {
 				// The game goes on without the host, who can come back with host-join.
 				if (connectionId.equals(game.getHostConnectionId())) {

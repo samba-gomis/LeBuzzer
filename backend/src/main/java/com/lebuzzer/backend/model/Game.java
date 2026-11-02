@@ -30,11 +30,26 @@ public class Game {
 	private long questionEndsAt;
 	private ScheduledFuture<?> autoCloseTask;
 	private String hostConnectionId;
+	/** Server time (epoch ms) of the last thing that happened in this game. */
+	private long lastActivityAt;
 
-	public Game(String code, String hostToken, Theme theme) {
+	public Game(String code, String hostToken, Theme theme, long createdAt) {
 		this.code = code;
 		this.hostToken = hostToken;
 		this.theme = theme;
+		this.lastActivityAt = createdAt;
+	}
+
+	public long getLastActivityAt() {
+		return lastActivityAt;
+	}
+
+	public void markActivity(long now) {
+		lastActivityAt = now;
+	}
+
+	public boolean hasConnectedParticipant() {
+		return hostConnectionId != null || connectedPlayerCount() > 0;
 	}
 
 	public String getCode() {
