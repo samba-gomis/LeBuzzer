@@ -234,7 +234,8 @@ curl http://localhost:8080/api/metrics/ABCDE
 
 La réponse donne le total, la répartition applicatif / heartbeats / protocole, et le détail par type
 (`SEND answer`, `MESSAGE QUESTION_STARTED`, `MESSAGE snapshot`…). Le même bilan est écrit dans les logs du backend
-2 secondes après la fin de la partie. Ce sont ces mesures qu'utilise la
+2 secondes après la fin de la partie. Les compteurs disparaissent avec la partie, lorsqu'elle est supprimée de la
+mémoire (voir le § 7) : relevez-les avant. Ce sont ces mesures qu'utilise la
 [note comparative polling / WebSocket](docs/comparatif-polling-websocket.md).
 
 ## 7. Dépannage
@@ -245,7 +246,7 @@ La réponse donne le total, la répartition applicatif / heartbeats / protocole,
 | `database "lebuzzer" does not exist` | la base n'a pas été créée (§ 2.1) |
 | « Impossible de charger les thèmes » sur l'accueil | le backend n'est pas démarré, ou pas sur le port 8080 |
 | Un téléphone n'arrive pas à se connecter | il n'est pas sur le même Wi-Fi, utilise `localhost` au lieu de l'adresse `Network:` de Vite, ou le pare-feu bloque Node.js |
-| « Partie indisponible » (animateur) ou « Impossible de rejoindre » (joueur) après un redémarrage du backend | les parties vivent en mémoire : un redémarrage les efface, il faut en créer une nouvelle |
+| « Partie indisponible » (animateur) ou « Impossible de rejoindre » (joueur) | les parties vivent en mémoire : un redémarrage du backend les efface. Une partie est aussi supprimée après 30 minutes sans activité, si elle est terminée ou si plus personne n'y est connecté. Il faut en créer une nouvelle |
 
 ## 8. Structure du dépôt
 

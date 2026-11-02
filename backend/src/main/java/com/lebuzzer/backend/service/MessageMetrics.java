@@ -42,7 +42,7 @@ public class MessageMetrics {
 	private static final Logger log = LoggerFactory.getLogger(MessageMetrics.class);
 	private static final Pattern GAME_DESTINATION = Pattern.compile("^/(?:app|topic)/game/([A-Z]{5})(?:/.*)?$");
 
-	/** By WebSocket session id. Kept after the disconnection, so that the counts can still be read. */
+	/** By WebSocket session id. Kept after the disconnection, so that the counts can be read until the game is removed. */
 	private final Map<String, SessionCounts> sessions = new ConcurrentHashMap<>();
 
 	/** Called by MessageCounterInterceptor for every message on the client inbound and outbound channels. */
@@ -53,9 +53,30 @@ public class MessageMetrics {
 			return;
 		}
 		String destination = SimpMessageHeaderAccessor.getDestination(headers);
-		SessionCounts session = sessions.computeIfAbsent(sessionId, id -> new SessionCounts());
+		SimpMessageType type = SimpMessageHeaderAccessor.getMessageType(headers);
+		boolean closing = type == SimpMessageType.DISCONNECT || type == SimpMessageType.DISCONNECT_ACK;
+		// The frames of a closing must not bring back a session that was already forgotten.
+		SessionCounts session = closing ? sessions.get(sessionId)
+				: sessions.computeIfAbsent(sessionId, id -> new SessionCounts());
+		if (session == null) {
+			return;
+		}
 		session.attachToGame(gameCodeIn(destination));
 		session.increment(direction, label(direction, headers, destination));
+		if (closing && session.gameCode == null) {
+			// A connection that never named a game will never be read: nothing to keep.
+			sessions.remove(sessionId);
+		}
+	}
+
+	/** The game was removed: its counts go with it. */
+	public void forgetGame(String code) {
+		sessions.values().removeIf(session -> code.equals(session.gameCode));
+	}
+
+	/** For tests only. */
+	int trackedSessions() {
+		return sessions.size();
 	}
 
 	public Optional<GameMessageMetrics> forGame(String code) {

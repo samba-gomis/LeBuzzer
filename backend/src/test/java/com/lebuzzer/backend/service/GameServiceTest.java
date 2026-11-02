@@ -17,15 +17,20 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Delayed;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
+import org.springframework.messaging.simp.SimpMessageType;
+import org.springframework.messaging.support.MessageBuilder;
 
 import com.lebuzzer.backend.dto.ErrorCode;
 import com.lebuzzer.backend.dto.GameCreated;
@@ -55,6 +60,7 @@ class GameServiceTest {
 	private MutableClock clock;
 	private RecordingNotifier notifier;
 	private ScheduledExecutorService timer;
+	private MessageMetrics messageMetrics;
 	private GameService service;
 
 	@BeforeEach
@@ -62,8 +68,8 @@ class GameServiceTest {
 		clock = new MutableClock(START);
 		notifier = new RecordingNotifier();
 		timer = Executors.newSingleThreadScheduledExecutor();
-		service = new GameService(new TestCatalog(), new RandomCodeGenerator(), notifier, clock, timer,
-				new MessageMetrics());
+		messageMetrics = new MessageMetrics();
+		service = new GameService(new TestCatalog(), new RandomCodeGenerator(), notifier, clock, timer, messageMetrics);
 	}
 
 	@AfterEach
@@ -447,6 +453,114 @@ class GameServiceTest {
 		assertEquals(List.of("Lina"), playerNicknames(gameB.code()));
 		assertGameError(ErrorCode.INVALID_HOST_TOKEN, () -> service.startQuestion(gameB.code(), gameA.hostToken()));
 		assertGameError(ErrorCode.NOT_IN_GAME, () -> service.submitAnswer(gameB.code(), "player-a", "q1", 1));
+	}
+
+	// ------------------------------------------------------------------ cleanup
+
+	@Test
+	void aFinishedGame_isRemovedAfter30MinutesWithoutActivity() {
+		GameCreated game = createGame();
+		join(game.code(), "p1", "Samba");
+		service.endGame(game.code(), game.hostToken());
+		clock.advanceMillis(TimeUnit.MINUTES.toMillis(31));
+
+		service.removeExpiredGames();
+
+		assertNull(service.findGame(game.code()));
+		assertGameError(ErrorCode.GAME_NOT_FOUND, () -> service.join(game.code(), "p2", "Lina", null));
+		service.handleDisconnect("p1"); // a player still on the final screen leaves: nothing breaks
+	}
+
+	@Test
+	void aFinishedGame_isKeptBefore30Minutes() {
+		GameCreated game = createGame();
+		service.endGame(game.code(), game.hostToken());
+		clock.advanceMillis(TimeUnit.MINUTES.toMillis(29));
+
+		service.removeExpiredGames();
+
+		assertNotNull(service.findGame(game.code()));
+	}
+
+	@Test
+	void anAbandonedGame_isRemovedAfter30Minutes() {
+		GameCreated game = createGame();
+		service.handleDisconnect(HOST);
+		clock.advanceMillis(TimeUnit.MINUTES.toMillis(31));
+
+		service.removeExpiredGames();
+
+		assertNull(service.findGame(game.code()));
+	}
+
+	@Test
+	void aGameInPause_isKeptAsLongAsSomeoneIsConnected() {
+		GameCreated withHost = createGame();
+		service.createGame("host-b", "quiz");
+		GameCreated withPlayer = notifier.lastPrivate("host-b", GameCreated.class);
+		join(withPlayer.code(), "p1", "Samba");
+		clock.advanceMillis(TimeUnit.MINUTES.toMillis(31));
+
+		service.removeExpiredGames();
+
+		assertNotNull(service.findGame(withHost.code()), "the host is connected");
+		assertNotNull(service.findGame(withPlayer.code()), "a player is connected");
+	}
+
+	@Test
+	void theLastActivity_countsFromTheLastEvent() {
+		GameCreated game = createGame();
+		join(game.code(), "p1", "Samba");
+		clock.advanceMillis(TimeUnit.MINUTES.toMillis(29));
+		service.handleDisconnect("p1");
+		service.handleDisconnect(HOST);
+		clock.advanceMillis(TimeUnit.MINUTES.toMillis(2));
+
+		service.removeExpiredGames();
+		assertNotNull(service.findGame(game.code()), "everybody left only 2 minutes ago");
+
+		clock.advanceMillis(TimeUnit.MINUTES.toMillis(29));
+		service.removeExpiredGames();
+		assertNull(service.findGame(game.code()));
+	}
+
+	@Test
+	void removingAGame_freesItsCodeAndItsMessageCounts() {
+		Iterator<String> codes = List.of("AAAAA", "AAAAA").iterator();
+		MessageMetrics metrics = new MessageMetrics();
+		GameService repeatingService = new GameService(new TestCatalog(), codes::next, notifier, clock, timer, metrics);
+		repeatingService.createGame("c1", "quiz");
+		GameCreated game = notifier.lastPrivate("c1", GameCreated.class);
+		SimpMessageHeaderAccessor frame = SimpMessageHeaderAccessor.create(SimpMessageType.SUBSCRIBE);
+		frame.setSessionId("c1");
+		frame.setDestination("/topic/game/" + game.code());
+		metrics.record(MessageMetrics.Direction.CLIENT_TO_SERVER,
+				MessageBuilder.createMessage(new byte[0], frame.getMessageHeaders()));
+		assertTrue(metrics.forGame(game.code()).isPresent());
+		clock.advanceMillis(TimeUnit.MINUTES.toMillis(31));
+
+		repeatingService.removeExpiredGames();
+
+		assertTrue(metrics.forGame(game.code()).isEmpty());
+		repeatingService.createGame("c2", "quiz");
+		assertEquals("AAAAA", notifier.lastPrivate("c2", GameCreated.class).code());
+	}
+
+	@Test
+	void theCleanup_runsEvery5Minutes() {
+		ScheduledThreadPoolExecutor executor = new ScheduledThreadPoolExecutor(1);
+		try {
+			GameService scheduledService = new GameService(new TestCatalog(), new RandomCodeGenerator(), notifier, clock,
+					executor, messageMetrics);
+
+			scheduledService.scheduleCleanup();
+
+			assertEquals(1, executor.getQueue().size());
+			long delayMinutes = ((Delayed) executor.getQueue().peek()).getDelay(TimeUnit.SECONDS) / 60;
+			assertTrue(delayMinutes >= 4 && delayMinutes <= 5, "first run in " + delayMinutes + " minutes");
+		} finally {
+			executor.shutdownNow();
+		}
 	}
 
 	// ------------------------------------------------------------------ helpers
