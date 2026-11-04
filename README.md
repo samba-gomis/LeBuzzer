@@ -27,8 +27,13 @@ Toutes les commandes partent de la racine du dépôt. Sous macOS ou Linux, rempl
 ### 2.1 La base de données (une seule fois)
 
 Le backend se connecte à une base `lebuzzer` avec l'utilisateur `lebuzzer` (mot de passe `lebuzzer`).
-Les questions sont pour l'instant fournies par un catalogue en mémoire : la base est configurée et prête à
-recevoir le catalogue, mais elle doit exister pour que le backend démarre.
+Elle contient le catalogue de questions : 4 thèmes de 7 questions et le barème par difficulté. Il suffit de créer
+la base et l'utilisateur : à chaque démarrage, le backend recrée les tables et les remplit à partir de
+[schema.sql](backend/src/main/resources/schema.sql) et [data.sql](backend/src/main/resources/data.sql), puis garde
+le catalogue en mémoire (aucune requête pendant une partie).
+
+Modifier une question, c'est modifier `data.sql`, puis redémarrer le backend. Une modification faite à la main dans
+pgAdmin est perdue au démarrage suivant : git est la seule source de vérité.
 
 **Option A — PostgreSQL installé sur la machine.** Dans pgAdmin (Query Tool sur la base `postgres`) ou dans
 `psql -U postgres`, exécutez ces deux commandes **une par une** (`CREATE DATABASE` refuse d'être lancé avec
@@ -90,14 +95,20 @@ configurer en développement.
 1. **Animateur** : sur la page d'accueil, choisissez un thème puis **Créer la partie**. Le code s'affiche en grand.
 2. **Joueurs** : sur la page d'accueil (ou depuis un téléphone), saisissez le code et un pseudo, puis **Rejoindre**.
    Ils apparaissent en direct dans la liste de l'animateur.
-3. **Animateur** : **Lancer la première question**. Les joueurs ont 20 secondes ; l'animateur voit la progression
-   des réponses et peut **Clore la question** avant la fin.
+3. **Animateur** : **Lancer la première question**. Les joueurs ont 20 secondes (25 pour les questions difficiles) ;
+   l'animateur voit la progression des réponses et peut **Clore la question** avant la fin.
 4. À la clôture, chaque joueur voit s'il a bon, ses points, son rang et le classement ; l'animateur voit le classement
    et passe à la **Question suivante** ou termine la partie. Pendant une question, le classement reste affiché sous les
    réponses des joueurs.
 
 Une bonne réponse rapporte entre 50 % (au dernier moment) et 100 % (immédiatement) des points de la question ;
-une mauvaise réponse rapporte 0. Le barème par difficulté est provisoire.
+une mauvaise réponse rapporte 0. Dans chaque thème, les questions vont de la plus facile à la plus difficile :
+
+| Questions | Difficulté | Points | Temps |
+|---|---|---|---|
+| 1 et 2 | Facile | 500 | 20 s |
+| 3 à 5 | Moyen | 1 000 | 20 s |
+| 6 et 7 | Difficile | 1 500 | 25 s |
 
 Pour tester seul sur un ordinateur, ouvrez **un onglet par joueur** : chaque onglet garde sa propre identité
 (`sessionStorage`). Deux onglets du même navigateur sont donc deux joueurs différents.
@@ -244,6 +255,7 @@ mémoire (voir le § 7) : relevez-les avant. Ce sont ces mesures qu'utilise la
 |---|---|
 | Le backend ne démarre pas : `password authentication failed for user "lebuzzer"` | l'utilisateur `lebuzzer` n'existe pas ou n'a pas ce mot de passe (§ 2.1), ou une variable `SPRING_DATASOURCE_PASSWORD` est définie |
 | `database "lebuzzer" does not exist` | la base n'a pas été créée (§ 2.1) |
+| Le backend ne démarre pas : `Theme … has … questions, expected 7` ou `Question … has … choices, expected 4` | une erreur dans `data.sql` : chaque thème doit avoir 7 questions, et chaque question 4 réponses |
 | « Impossible de charger les thèmes » sur l'accueil | le backend n'est pas démarré, ou pas sur le port 8080 |
 | Un téléphone n'arrive pas à se connecter | il n'est pas sur le même Wi-Fi, utilise `localhost` au lieu de l'adresse `Network:` de Vite, ou le pare-feu bloque Node.js |
 | « Partie indisponible » (animateur) ou « Impossible de rejoindre » (joueur) | les parties vivent en mémoire : un redémarrage du backend les efface. Une partie est aussi supprimée après 30 minutes sans activité, si elle est terminée ou si plus personne n'y est connecté. Il faut en créer une nouvelle |
@@ -254,10 +266,14 @@ mémoire (voir le § 7) : relevez-les avant. Ce sont ces mesures qu'utilise la
 LeBuzzer/
 ├── .github/workflows/ci.yml   CI : backend (verify) et frontend (lint + build)
 ├── backend/                   Spring Boot
+│   ├── src/main/resources/    application.properties ; schema.sql et data.sql : le catalogue de questions
 │   └── src/main/java/com/lebuzzer/backend/
 │       ├── config/            WebSocket/STOMP, identité anonyme, contrôle des destinations, compteur, horloge
 │       ├── controller/        GameController (STOMP), ThemeController et MetricsController (REST)
-│       ├── service/           GameService : toutes les règles du jeu ; MessageMetrics : les comptes
+│       ├── service/           GameService : toutes les règles du jeu ; DatabaseQuestionCatalog : le catalogue ;
+│       │                      MessageMetrics : les comptes
+│       ├── entity/            les tables du catalogue de questions
+│       ├── repository/        la lecture de ces tables
 │       ├── model/             l'état d'une partie en mémoire
 │       ├── dto/               le contrat des messages échangés
 │       └── event/             détection des déconnexions
@@ -268,6 +284,6 @@ LeBuzzer/
 │       ├── types/             miroir TypeScript du contrat, et validation des messages reçus
 │       ├── components/        éléments d'interface
 │       └── pages/             accueil, animateur, joueur
-├── docs/                      note comparative polling / WebSocket
+├── docs/                      note comparative polling / WebSocket ; specs et plans (superpowers/)
 └── compose.yaml               PostgreSQL pour le développement (optionnel)
 ```
