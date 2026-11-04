@@ -49,6 +49,7 @@ class CatalogAssemblerTest {
 		assertEquals(3, hard.correctIndex());
 		assertEquals(1500, hard.points());
 		assertEquals(25_000, hard.durationMs());
+		assertEquals("Difficile", hard.difficulty());
 		assertEquals(List.of("W", "X", "Y", "Z"), hard.choices());
 		assertEquals(0, assembled.getFirst().correctIndex()); // correctPosition 1
 	}
