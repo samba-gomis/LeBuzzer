@@ -6,8 +6,8 @@ import java.util.Optional;
 import com.lebuzzer.backend.model.Theme;
 
 /**
- * Where the questions come from. The game only depends on this interface: today an in-memory
- * implementation, later the PostgreSQL one, without changing anything else.
+ * Where the questions come from. The game only depends on this interface: the questions are stored
+ * in PostgreSQL ({@link DatabaseQuestionCatalog}), and the tests use their own catalogue.
  * A game reads its theme once, at creation; nothing is read from the catalog during play.
  */
 public interface QuestionCatalog {
