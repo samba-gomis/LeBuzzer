@@ -27,19 +27,15 @@ public class DifficultyEntity {
 	@Column(name = "duration_ms")
 	private int durationMs;
 
-	@Column(name = "sort_order")
-	private int sortOrder;
-
 	/** Required by JPA. */
 	protected DifficultyEntity() {
 	}
 
-	public DifficultyEntity(String code, String label, int points, int durationMs, int sortOrder) {
+	public DifficultyEntity(String code, String label, int points, int durationMs) {
 		this.code = code;
 		this.label = label;
 		this.points = points;
 		this.durationMs = durationMs;
-		this.sortOrder = sortOrder;
 	}
 
 	public String getCode() {
@@ -56,10 +52,6 @@ public class DifficultyEntity {
 
 	public int getDurationMs() {
 		return durationMs;
-	}
-
-	public int getSortOrder() {
-		return sortOrder;
 	}
 
 }

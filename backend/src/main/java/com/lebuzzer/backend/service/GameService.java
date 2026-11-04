@@ -435,8 +435,8 @@ public class GameService {
 	private QuestionView questionView(Game game) {
 		Question question = game.currentQuestion();
 		return new QuestionView(question.id(), game.getCurrentQuestionIndex(), game.totalQuestions(),
-				question.text(), question.choices(), question.points(), question.durationMs(),
-				game.getQuestionEndsAt());
+				question.text(), question.choices(), question.difficulty(), question.points(),
+				question.durationMs(), game.getQuestionEndsAt());
 	}
 
 	/** Highest score first; same score, same rank (1, 1, 3...). */

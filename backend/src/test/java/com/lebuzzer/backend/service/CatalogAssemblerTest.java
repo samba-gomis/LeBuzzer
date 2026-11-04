@@ -18,12 +18,12 @@ import com.lebuzzer.backend.model.Theme;
 /** No database here: the entities are built by hand, the way the repositories would return them. */
 class CatalogAssemblerTest {
 
-	private static final DifficultyEntity EASY = new DifficultyEntity("EASY", "Facile", 500, 20_000, 1);
-	private static final DifficultyEntity HARD = new DifficultyEntity("HARD", "Difficile", 1500, 25_000, 3);
+	private static final DifficultyEntity EASY = new DifficultyEntity("EASY", "Facile", 500, 20_000);
+	private static final DifficultyEntity HARD = new DifficultyEntity("HARD", "Difficile", 1500, 25_000);
 	private static final List<String> CHOICES = List.of("A", "B", "C", "D");
 
 	@Test
-	void assemblesThemesAndQuestionsInPositionOrder() {
+	void themesAndQuestions_areSortedByPosition() {
 		ThemeEntity a = new ThemeEntity("a", "Theme A", 1);
 		ThemeEntity b = new ThemeEntity("b", "Theme B", 2);
 		List<QuestionEntity> questions = new ArrayList<>();
@@ -38,7 +38,7 @@ class CatalogAssemblerTest {
 	}
 
 	@Test
-	void convertsTheCorrectPositionAndAppliesTheDifficulty() {
+	void theCorrectPosition_becomesAZeroBasedIndex_andTheDifficultyGivesPointsAndTime() {
 		ThemeEntity theme = new ThemeEntity("t", "Theme", 1);
 		List<QuestionEntity> questions = new ArrayList<>(sevenQuestions(theme));
 		questions.set(6, new QuestionEntity("t-7", theme, 7, HARD, "Hard one", 4, List.of("W", "X", "Y", "Z")));
@@ -49,17 +49,18 @@ class CatalogAssemblerTest {
 		assertEquals(3, hard.correctIndex());
 		assertEquals(1500, hard.points());
 		assertEquals(25_000, hard.durationMs());
+		assertEquals("Difficile", hard.difficulty());
 		assertEquals(List.of("W", "X", "Y", "Z"), hard.choices());
 		assertEquals(0, assembled.getFirst().correctIndex()); // correctPosition 1
 	}
 
 	@Test
-	void refusesAnEmptyCatalog() {
+	void anEmptyCatalog_isRefused() {
 		assertRefused("Catalog has no theme", List.of(), List.of());
 	}
 
 	@Test
-	void refusesThemeWithoutAnyQuestion() {
+	void aThemeWithoutAnyQuestion_isRefused() {
 		ThemeEntity general = new ThemeEntity("general", "Culture générale", 1);
 		ThemeEntity anime = new ThemeEntity("anime", "Anime (manga)", 2);
 
@@ -67,14 +68,14 @@ class CatalogAssemblerTest {
 	}
 
 	@Test
-	void refusesThemeWithoutSevenQuestions() {
+	void aThemeWithoutSevenQuestions_isRefused() {
 		ThemeEntity anime = new ThemeEntity("anime", "Anime (manga)", 1);
 
 		assertRefused("Theme anime has 6 questions, expected 7", List.of(anime), sevenQuestions(anime).subList(0, 6));
 	}
 
 	@Test
-	void refusesQuestionWithoutFourChoices() {
+	void aQuestionWithoutFourChoices_isRefused() {
 		ThemeEntity sport = new ThemeEntity("sport", "Sport", 1);
 		List<QuestionEntity> questions = new ArrayList<>(sevenQuestions(sport));
 		questions.set(2, new QuestionEntity("sport-3", sport, 3, EASY, "Three choices", 1, List.of("A", "B", "C")));

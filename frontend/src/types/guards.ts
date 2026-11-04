@@ -66,6 +66,7 @@ export function isQuestionView(value: unknown): value is QuestionView {
     isNumber(value.total) &&
     isString(value.text) &&
     isArrayOf(value.choices, isString) &&
+    isString(value.difficulty) &&
     isNumber(value.points) &&
     isNumber(value.durationMs) &&
     isNumber(value.endsAt)

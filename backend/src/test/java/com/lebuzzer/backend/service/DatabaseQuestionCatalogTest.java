@@ -33,7 +33,7 @@ class DatabaseQuestionCatalogTest {
 	private JdbcClient jdbcClient;
 
 	@Test
-	void loadsFourThemesInDisplayOrder() {
+	void theFourThemes_areLoadedInDisplayOrder() {
 		List<Theme> themes = catalog.themes();
 
 		assertEquals(List.of("general", "sciences", "sport", "anime"), themes.stream().map(Theme::id).toList());
@@ -42,7 +42,7 @@ class DatabaseQuestionCatalogTest {
 	}
 
 	@Test
-	void everyThemeHasSevenQuestionsOfFourChoicesWithTheScoringOfTheirPosition() {
+	void everyTheme_hasSevenQuestionsOfFourChoices_scoredByTheirPosition() {
 		for (Theme theme : catalog.themes()) {
 			List<Question> questions = theme.questions();
 
@@ -51,6 +51,8 @@ class DatabaseQuestionCatalogTest {
 			for (Question question : questions) {
 				assertEquals(4, Set.copyOf(question.choices()).size(), question.id() + " needs 4 distinct choices");
 			}
+			assertEquals(List.of("Facile", "Facile", "Moyen", "Moyen", "Moyen", "Difficile", "Difficile"),
+					questions.stream().map(Question::difficulty).toList(), theme.id());
 			assertEquals(List.of(500, 500, 1000, 1000, 1000, 1500, 1500),
 					questions.stream().map(Question::points).toList(), theme.id());
 			assertEquals(List.of(20_000L, 20_000L, 20_000L, 20_000L, 20_000L, 25_000L, 25_000L),
@@ -59,7 +61,7 @@ class DatabaseQuestionCatalogTest {
 	}
 
 	@Test
-	void keepsTheExistingGeneralKnowledgeQuestions() {
+	void theFormerGeneralKnowledgeQuestions_areKept() {
 		Question first = catalog.findTheme("general").orElseThrow().questions().getFirst();
 
 		assertEquals("general-1", first.id());
@@ -69,13 +71,13 @@ class DatabaseQuestionCatalogTest {
 	}
 
 	@Test
-	void findsAThemeByIdAndNothingForAnUnknownId() {
+	void findTheme_returnsAKnownTheme_andNothingForAnUnknownId() {
 		assertEquals(7, catalog.findTheme("anime").orElseThrow().questions().size());
 		assertTrue(catalog.findTheme("nope").isEmpty());
 	}
 
 	@Test
-	void replayingTheScriptsLeavesTheSameCatalog() {
+	void replayingTheScripts_leavesTheSameCatalog() {
 		ResourceDatabasePopulator populator = new ResourceDatabasePopulator(new ClassPathResource("schema.sql"),
 				new ClassPathResource("data.sql"));
 		populator.setSqlScriptEncoding("UTF-8");
