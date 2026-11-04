@@ -50,6 +50,8 @@ export interface QuestionView {
   total: number
   text: string
   choices: string[]
+  /** Label of the level, e.g. "Moyen". */
+  difficulty: string
   points: number
   durationMs: number
   /** Server time (epoch ms) at which answers stop being accepted. */
