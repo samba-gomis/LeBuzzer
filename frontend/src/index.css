@@ -406,6 +406,19 @@ p {
   font-weight: 700;
 }
 
+.question-card__score {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.question-card__difficulty {
+  padding: 2px 10px;
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
 .question-card__points {
   color: var(--yellow-400);
 }
