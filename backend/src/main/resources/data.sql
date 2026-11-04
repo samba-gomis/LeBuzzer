@@ -2,10 +2,10 @@
 -- Positions count from 1 (choices 1..4 = A..D); the game counts from 0, see CatalogAssembler.
 -- In SQL, an apostrophe inside a text is written twice: 'l''Australie'.
 
-INSERT INTO difficulty (code, label, points, duration_ms, sort_order) VALUES
-	('EASY',   'Facile',    500,  20000, 1),
-	('MEDIUM', 'Moyen',     1000, 20000, 2),
-	('HARD',   'Difficile', 1500, 25000, 3);
+INSERT INTO difficulty (code, label, points, duration_ms) VALUES
+	('EASY',   'Facile',    500,  20000),
+	('MEDIUM', 'Moyen',     1000, 20000),
+	('HARD',   'Difficile', 1500, 25000);
 
 INSERT INTO theme (id, name, position) VALUES
 	('general',  'Culture générale',         1),

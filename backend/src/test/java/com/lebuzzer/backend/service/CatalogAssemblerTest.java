@@ -18,8 +18,8 @@ import com.lebuzzer.backend.model.Theme;
 /** No database here: the entities are built by hand, the way the repositories would return them. */
 class CatalogAssemblerTest {
 
-	private static final DifficultyEntity EASY = new DifficultyEntity("EASY", "Facile", 500, 20_000, 1);
-	private static final DifficultyEntity HARD = new DifficultyEntity("HARD", "Difficile", 1500, 25_000, 3);
+	private static final DifficultyEntity EASY = new DifficultyEntity("EASY", "Facile", 500, 20_000);
+	private static final DifficultyEntity HARD = new DifficultyEntity("HARD", "Difficile", 1500, 25_000);
 	private static final List<String> CHOICES = List.of("A", "B", "C", "D");
 
 	@Test

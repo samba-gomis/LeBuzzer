@@ -13,8 +13,7 @@ CREATE TABLE difficulty (
 	code        VARCHAR(20) PRIMARY KEY,
 	label       VARCHAR(50) NOT NULL,
 	points      INTEGER     NOT NULL CHECK (points > 0),
-	duration_ms INTEGER     NOT NULL CHECK (duration_ms > 0),
-	sort_order  INTEGER     NOT NULL UNIQUE
+	duration_ms INTEGER     NOT NULL CHECK (duration_ms > 0)
 );
 
 CREATE TABLE question (
