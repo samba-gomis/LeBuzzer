@@ -59,7 +59,8 @@ public final class CatalogAssembler {
 		}
 		DifficultyEntity difficulty = question.getDifficulty();
 		return new Question(question.getId(), question.getText(), choices,
-				question.getCorrectPosition() - 1, difficulty.getPoints(), difficulty.getDurationMs());
+				question.getCorrectPosition() - 1, difficulty.getLabel(), difficulty.getPoints(),
+				difficulty.getDurationMs());
 	}
 
 }

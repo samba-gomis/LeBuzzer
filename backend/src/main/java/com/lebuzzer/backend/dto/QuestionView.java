@@ -7,8 +7,9 @@ import java.util.List;
  * so it cannot leak while the question is open.
  *
  * @param index 0-based position in the game
+ * @param difficulty label of the level, e.g. "Moyen"
  * @param endsAt server time (epoch ms) at which answers stop being accepted
  */
 public record QuestionView(String questionId, int index, int total, String text, List<String> choices,
-		int points, long durationMs, long endsAt) {
+		String difficulty, int points, long durationMs, long endsAt) {
 }

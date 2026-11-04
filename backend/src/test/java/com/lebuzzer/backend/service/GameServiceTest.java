@@ -53,9 +53,11 @@ class GameServiceTest {
 	private static final String HOST = "host-connection";
 	private static final Instant START = Instant.parse("2026-01-01T10:00:00Z");
 
-	/** Q1: right answer = 1. Q2: right answer = 0. 1000 points, 20 s each. */
-	private static final Question Q1 = new Question("q1", "Question 1", List.of("A", "B", "C", "D"), 1, 1000, 20_000);
-	private static final Question Q2 = new Question("q2", "Question 2", List.of("A", "B", "C", "D"), 0, 1000, 20_000);
+	/** Q1: right answer = 1. Q2: right answer = 0. Medium, 1000 points, 20 s each. */
+	private static final Question Q1 = new Question("q1", "Question 1", List.of("A", "B", "C", "D"), 1, "Moyen", 1000,
+			20_000);
+	private static final Question Q2 = new Question("q2", "Question 2", List.of("A", "B", "C", "D"), 0, "Moyen", 1000,
+			20_000);
 
 	private MutableClock clock;
 	private RecordingNotifier notifier;
@@ -154,6 +156,17 @@ class GameServiceTest {
 		assertEquals(START.toEpochMilli() + 5_000, snapshot.serverNow());
 		assertNull(snapshot.correctIndex(), "the right answer must stay secret while the question is open");
 		assertNotNull(snapshot.leaderboard());
+	}
+
+	@Test
+	void theOpenQuestion_showsItsDifficulty_toEveryoneAndToALateJoiner() {
+		GameCreated game = createGame();
+		service.startQuestion(game.code(), game.hostToken());
+		service.join(game.code(), "late", "Retardataire", null);
+
+		assertEquals("Moyen",
+				notifier.lastRoomEvent(game.code(), RoomEvent.QuestionStarted.class).question().difficulty());
+		assertEquals("Moyen", notifier.lastSnapshot("late").currentQuestion().difficulty());
 	}
 
 	@Test
@@ -611,7 +624,7 @@ class GameServiceTest {
 
 		private static final List<Theme> THEMES = List.of(
 				new Theme("quiz", "Quiz", List.of(Q1, Q2)),
-				new Theme("fast", "Fast", List.of(new Question("f1", "Fast", List.of("A", "B"), 0, 1000, 150))));
+				new Theme("fast", "Fast", List.of(new Question("f1", "Fast", List.of("A", "B"), 0, "Facile", 1000, 150))));
 
 		@Override
 		public List<Theme> themes() {

@@ -6,10 +6,12 @@ import java.util.List;
  * A quiz question as stored in the catalog. {@code correctIndex} never leaves the server
  * while the question is open.
  *
+ * @param difficulty label of the level shown to the players, e.g. "Moyen"
  * @param points maximum points for a right answer (see {@code ScoreCalculator})
  * @param durationMs time allowed to answer
  */
-public record Question(String id, String text, List<String> choices, int correctIndex, int points, long durationMs) {
+public record Question(String id, String text, List<String> choices, int correctIndex, String difficulty, int points,
+		long durationMs) {
 
 	public Question {
 		choices = List.copyOf(choices);
