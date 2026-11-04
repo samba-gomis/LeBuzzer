@@ -51,6 +51,8 @@ class DatabaseQuestionCatalogTest {
 			for (Question question : questions) {
 				assertEquals(4, Set.copyOf(question.choices()).size(), question.id() + " needs 4 distinct choices");
 			}
+			assertEquals(List.of("Facile", "Facile", "Moyen", "Moyen", "Moyen", "Difficile", "Difficile"),
+					questions.stream().map(Question::difficulty).toList(), theme.id());
 			assertEquals(List.of(500, 500, 1000, 1000, 1000, 1500, 1500),
 					questions.stream().map(Question::points).toList(), theme.id());
 			assertEquals(List.of(20_000L, 20_000L, 20_000L, 20_000L, 20_000L, 25_000L, 25_000L),
